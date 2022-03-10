@@ -187,19 +187,6 @@ class _ManpageFormatter(HelpFormatter):
 
         return parts
 
-    def _format_ag_subcommands(self, actions, prog):
-        lines = []
-
-        for action in actions:
-            if getattr(action, 'help', None) == SUPPRESS:
-                continue
-            lines.append('.TP')
-            lines.append(bold(prog) + ' ' + underline(action.dest))
-            if hasattr(action, 'help'):
-                lines.append(action.help)
-
-        return '\n'.join(lines)
-
     def _format_subparsers(self, action_group, action, subcommand=None):
         lines = []
         lines.append('.SH')
@@ -207,9 +194,6 @@ class _ManpageFormatter(HelpFormatter):
         if subcommand:
             title += " " + underline(quoted(subcommand))
         lines.append(title)
-
-        lines.append(self._format_ag_subcommands(action._choices_actions,
-                     subcommand or self._prog))
 
         # gather (sub-)command aliases
         command_aliases = {}
