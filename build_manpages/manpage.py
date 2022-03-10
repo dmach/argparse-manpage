@@ -216,6 +216,9 @@ class _ManpageFormatter(HelpFormatter):
             new_subcommand = "{} {}".format(subcommand or self._prog, name)
             aliases = command_aliases[choice]
             help = command_help.get(name, None)
+            if help == SUPPRESS:
+                # don't print hidden commands
+                continue
             lines.extend(self._format_parser(choice, new_subcommand, aliases, help))
         return lines
 
