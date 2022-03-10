@@ -14,6 +14,18 @@ DEFAULT_GROUP_NAMES = {
 }
 
 
+DEFAULT_GROUP_NAMES_SUBCOMMANDS = {
+    # We replace ArgumentGroup title (value) with alias (key).
+    "arguments:": [
+        'positional arguments',
+    ],
+    'options:': [
+        'optional arguments',
+        'options',
+    ]
+}
+
+
 class Manpage(object):
     def __init__(self, parser):
         self.prog = parser.prog
@@ -99,6 +111,12 @@ class _ManpageFormatter(HelpFormatter):
             return text.replace('-', r'\-')
         return text
 
+    @staticmethod
+    def _get_aliases_str(aliases):
+        if not aliases:
+            return ""
+        return " (" + ", ".join(aliases) + ")"
+
     def _format_action_invocation(self, action):
         if not action.option_strings:
             metavar, = self._metavar_formatter(action, action.dest)(1)
@@ -121,7 +139,7 @@ class _ManpageFormatter(HelpFormatter):
                                             underline(args_string)))
         return ', '.join(parts)
 
-    def _format_parser(self, parser, subcommand=None):
+    def _format_parser(self, parser, subcommand=None, aliases=None, help=None):
         # The parser "tree" looks like
         # ----------------------------
         # Parser -> [ActionGroup, ActionGroup, ..]
@@ -133,8 +151,12 @@ class _ManpageFormatter(HelpFormatter):
         lines = []
         if subcommand:
             first_line = ".SH COMMAND"
-            first_line += " " + underline(quoted(subcommand))
+            first_line = ".SS"
+            first_line += " " + bold(subcommand + self._get_aliases_str(aliases))
             lines.append(first_line)
+            if help:
+                lines.append(help)
+                lines.append("")
             lines.append(parser.format_usage())
 
         if parser.description:
@@ -199,12 +221,18 @@ class _ManpageFormatter(HelpFormatter):
                 command_aliases[command].append(name)
                 command_aliases_names.add(name)
 
+        command_help = {}
+        for i in action._choices_actions:
+            command_help[i.dest] = i.help
+
         for name, choice in action.choices.items():
             if name in command_aliases_names:
                 # don't print aliased commands multiple times
                 continue
             new_subcommand = "{} {}".format(subcommand or self._prog, name)
-            lines.extend(self._format_parser(choice, new_subcommand))
+            aliases = command_aliases[choice]
+            help = command_help.get(name, None)
+            lines.extend(self._format_parser(choice, new_subcommand, aliases, help))
         return lines
 
     def _format_action_group(self, action_group, subcommand=None):
@@ -238,18 +266,25 @@ class _ManpageFormatter(HelpFormatter):
             return []
 
         title = action_group.title
-        for replace_with, defaults in DEFAULT_GROUP_NAMES.items():
+
+        group_names = DEFAULT_GROUP_NAMES_SUBCOMMANDS if subcommand else DEFAULT_GROUP_NAMES
+        for replace_with, defaults in group_names.items():
             if title in defaults:
                 title = replace_with
-        if title:
-            title = title.upper()
-        if title and subcommand:
-            title += " " + underline(quoted(subcommand))
-        title = [] if not title else [".SH " + title]
+
+        if subcommand:
+            title = [] if not title else [title]
+        else:
+            title = title.upper() if title else ""
+            title = [] if not title else [".SH " + title]
 
         description = []
         if action_group.description:
             description.append(self.format_text(action_group.description))
+
+        if subcommand:
+            # indent the whole content of a subcommand
+            content = [".RS 7"] + content + [".RE"] + [""]
 
         return title + description + content
 
