@@ -189,11 +189,11 @@ class _ManpageFormatter(HelpFormatter):
 
     def _format_subparsers(self, action_group, action, subcommand=None):
         lines = []
-        lines.append('.SH')
-        title = action_group.title.upper()
-        if subcommand:
-            title += " " + underline(quoted(subcommand))
-        lines.append(title)
+
+        if not subcommand:
+            lines.append('.SH')
+            title = action_group.title.upper()
+            lines.append(title)
 
         # gather (sub-)command aliases
         command_aliases = {}
